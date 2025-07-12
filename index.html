@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>【Tailwind CSS版】資金計画バランスシート（アニメーション付き）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+    /* スライダーのつまみと溝のスタイルを確実に適用 */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+    }
+    /* Chrome, Safari, Opera, and Edge */
+    input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 0.5rem;
+        background-color: #e5e7eb; /* gray-200 */
+        border-radius: 0.5rem;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 1rem;
+      width: 1rem;
+      background-color: var(--slider-thumb-color, #3b82f6);
+      border-radius: 9999px;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      margin-top: -0.25rem;
+    }
+    /* Firefox */
+    input[type="range"]::-moz-range-track {
+        width: 100%;
+        height: 0.5rem;
+        background-color: #e5e7eb; /* gray-200 */
+        border-radius: 0.5rem;
+        border: 0;
+    }
+    input[type="range"]::-moz-range-thumb {
+      height: 1rem;
+      width: 1rem;
+      background-color: var(--slider-thumb-color, #3b82f6);
+      border-radius: 9999px;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    }
+    /* グラフのサイズ変更を滑らかにするためのトランジション */
+    #chart-wrapper {
+        transition: max-width 0.4s ease-out;
+    }
+    /* Firefoxでnumber入力の矢印を非表示 */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    /* アドバイスのテキストアニメーション */
+    #advice-text-pc, #advice-text-sp {
+        transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+  <div class="container max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+    
+    <!-- ▼▼▼ 解説エリア ▼▼▼ -->
+    <section class="mb-12 bg-white p-6 sm:p-8 rounded-2xl shadow-sm">
+        <div class="flex flex-col lg:flex-row items-center gap-8">
+            <div class="w-full lg:w-2/3">
+                <h2 class="text-2xl font-bold text-slate-900 mb-4">はじめての資金計画 - バランスシートへようこそ！</h2>
+                <p class="text-slate-600 leading-relaxed mb-4">
+                    家づくりは、夢を形にする素敵なプロジェクトです。そして、その夢を支えるのが「お金の計画」。このツールは、家づくりにかかる費用（支出）と、それをどう準備するか（収入）のバランスを、一目でわかるようにした「<strong>お金の天秤</strong>」のようなものです。
+                </p>
+                <p class="text-slate-600 leading-relaxed">
+                    まずは気軽に数値を動かして、あなただけの資金計画の第一歩を踏み出してみましょう！
+                </p>
+            </div>
+            <div class="w-full lg:w-1/3">
+                <div class="aspect-video bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+                    <img src="https://www.dropbox.com/scl/fi/57wel67rkua7jvt0s5ebc/2.png?rlkey=qxgpjgdygo5asykkrg02ucq9d&st=f16rthuw&dl=1" alt="マイホームの前で微笑む家族" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 border-t border-slate-200 pt-8">
+            <h3 class="text-xl font-bold text-center mb-6">かんたん３ステップの使い方</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <!-- ステップ1 -->
+                <div class="step-item">
+                    <div class="relative mb-4">
+                        <div class="w-16 h-16 mx-auto bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold">1</div>
+                    </div>
+                    <h4 class="font-bold text-lg mb-2">総予算を決めよう</h4>
+                    <p class="text-sm text-slate-600">土地や建物など、家づくりに「何に」「いくら」かかるかを入力します。これが天秤の左側に乗る「支出」です。</p>
+                </div>
+                <!-- ステップ2 -->
+                <div class="step-item">
+                    <div class="relative mb-4">
+                         <div class="w-16 h-16 mx-auto bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-2xl font-bold">2</div>
+                    </div>
+                    <h4 class="font-bold text-lg mb-2">資金計画を考えよう</h4>
+                    <p class="text-sm text-slate-600">自分で用意するお金（自己資金）はいくらか入力します。残りはローンで借りるお金として自動計算されます。これが天秤の右側に乗る「収入」です。</p>
+                </div>
+                <!-- ステップ3 -->
+                <div class="step-item">
+                    <div class="relative mb-4">
+                         <div class="w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl font-bold">3</div>
+                    </div>
+                    <h4 class="font-bold text-lg mb-2">バランスを確認しよう</h4>
+                    <p class="text-sm text-slate-600">右側のグラフで、「支出」と「収入」のバランスが一目でわかります。色々試して、無理のない計画を見つけましょう！</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ▲▲▲ 解説エリア ▲▲▲ -->
+
+
+    <header class="text-center mb-10">
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">資金計画 バランスシート</h1>
+      <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">家づくりにかかる費用と、それをどう賄うかのバランスをシミュレーションします。</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- 左カラム -->
+      <div class="order-1 md:order-1 flex flex-col gap-8">
+        <!-- 総予算カード -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-xl font-bold">総予算の内訳 (支出)</h2>
+              <button id="resetButton" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                  リセット
+              </button>
+            </div>
+            <div class="space-y-6">
+              <!-- 各入力グループ -->
+              <div class="input-group">
+                  <div class="flex items-baseline justify-between mb-1">
+                      <div class="flex items-center gap-2">
+                          <label for="sim0_land" class="block text-sm font-medium text-slate-700">土地代</label>
+                          <div class="relative group">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                              <div class="absolute bottom-full left-1/2 z-10 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">土地を購入するための費用です。立地や広さによって大きく変動します。</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                      <input type="range" id="sim0_land_slider" value="1000" min="0" max="5000" step="10" class="w-full" style="--slider-thumb-color: #8b5cf6;">
+                      <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                          <input type="number" id="sim0_land" value="1000" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                          <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                      </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_land_max"></div>
+              </div>
+              <div class="input-group">
+                  <div class="flex items-baseline justify-between mb-1">
+                      <div class="flex items-center gap-2">
+                          <label for="sim0_main" class="block text-sm font-medium text-slate-700">建物本体価格</label>
+                          <div class="relative group">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                              <div class="absolute bottom-full left-1/2 z-10 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">家の構造や内外装など、建物そのものを作るための費用です。住宅価格の約70-80%を占めます。</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                      <input type="range" id="sim0_main_slider" value="2500" min="0" max="5000" step="10" class="w-full" style="--slider-thumb-color: #3b82f6;">
+                      <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                          <input type="number" id="sim0_main" value="2500" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                          <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                      </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_main_max"></div>
+              </div>
+              <div class="input-group">
+                  <div class="flex items-baseline justify-between mb-1">
+                      <div class="flex items-center gap-2">
+                          <label for="sim0_option" class="block text-sm font-medium text-slate-700">建物オプション価格</label>
+                          <div class="relative group">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                              <div class="absolute bottom-full left-1/2 z-10 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">標準仕様から変更・追加する設備の費用です。例：キッチンのグレードアップ、太陽光パネルなど。</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                      <input type="range" id="sim0_option_slider" value="200" min="0" max="2000" step="10" class="w-full" style="--slider-thumb-color: #0891b2;">
+                      <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                          <input type="number" id="sim0_option" value="200" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                          <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                      </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_option_max"></div>
+              </div>
+              <div class="input-group">
+                  <div class="flex items-baseline justify-between mb-1">
+                      <div class="flex items-center gap-2">
+                          <label for="sim0_ancillary" class="block text-sm font-medium text-slate-700">付帯工事費</label>
+                          <div class="relative group">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                              <div class="absolute bottom-full left-1/2 z-10 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">建物本体以外に必要な工事費用です。例：地盤改良、外構（庭や駐車場）、給排水工事など。</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                      <input type="range" id="sim0_ancillary_slider" value="200" min="0" max="1000" step="10" class="w-full" style="--slider-thumb-color: #2dd4bf;">
+                      <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                          <input type="number" id="sim0_ancillary" value="200" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                          <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                      </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_ancillary_max"></div>
+              </div>
+              <div class="input-group">
+                  <div class="flex items-baseline justify-between mb-1">
+                      <div class="flex items-center gap-2">
+                          <label for="sim0_other" class="block text-sm font-medium text-slate-700">その他諸経費</label>
+                          <div class="relative group">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                              <div class="absolute bottom-full left-1/2 z-10 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">工事費以外にかかる手続き上の費用です。例：登記費用、ローン手数料、税金、火災保険料など。</div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                      <input type="range" id="sim0_other_slider" value="300" min="0" max="1000" step="5" class="w-full" style="--slider-thumb-color: #64748b;">
+                      <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                          <input type="number" id="sim0_other" value="300" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                          <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                      </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_other_max"></div>
+              </div>
+            </div>
+        </div>
+        <!-- カードA（解説コーナー） PC表示用 -->
+        <div class="order-2 hidden md:block">
+            <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                    <h3 class="text-xl font-bold text-emerald-800">解説コーナー</h3>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-bold text-emerald-700 mb-2">ワンポイントアドバイス</h4>
+                        <p id="advice-text-pc" class="text-emerald-900 leading-relaxed text-sm"></p>
+                    </div>
+                    <hr class="border-emerald-200">
+                    <div>
+                        <h4 class="font-bold text-emerald-700 mb-2">動画で学ぶ</h4>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" class="flex-1 bg-white hover:bg-emerald-100 text-emerald-700 font-bold py-2 px-4 rounded-lg border border-emerald-300 transition-colors flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.32 3.691A2 2 0 018.14 3h3.72a2 2 0 011.82 2.691l-1.24 7.437A2 2 0 0110.58 15H9.42a2 2 0 01-1.82-1.872L6.32 3.69z" /><path d="M10 17a1 1 0 100-2 1 1 0 000 2z" /></svg>
+                                <span>詳細動画 (5分)</span>
+                            </a>
+                            <a href="https://www.youtube.com/shorts/" target="_blank" rel="noopener noreferrer" class="flex-1 bg-white hover:bg-emerald-100 text-emerald-700 font-bold py-2 px-4 rounded-lg border border-emerald-300 transition-colors flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                                <span>ショート動画</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- 右カラム -->
+      <div class="order-2 md:order-2 flex flex-col gap-8">
+        <!-- 資金計画カード -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm">
+            <h2 class="text-xl font-bold mb-6">資金計画 (収入)</h2>
+            <div class="space-y-4">
+                <div class="input-group">
+                    <div class="flex justify-between items-baseline mb-1">
+                        <div class="flex items-center gap-2">
+                           <label for="sim0_own" class="text-sm font-medium text-slate-700">自己資金 (頭金)</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <p id="own_ratio_text" class="text-sm font-medium text-blue-600"></p>
+                            <div class="relative group">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400 cursor-help"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                                <div class="absolute bottom-full right-0 z-10 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">総予算に対する自己資金の割合です。一般的に20%以上あるとローンの審査に有利と言われています。</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="sim0_own_slider" value="500" min="0" max="5000" step="10" class="w-full" style="--slider-thumb-color: #f59e0b;">
+                        <div class="flex-shrink-0 flex items-baseline bg-slate-100 rounded-lg px-3 py-2 w-36">
+                            <input type="number" id="sim0_own" value="500" class="w-full bg-transparent text-right font-semibold text-slate-900 focus:outline-none">
+                            <span class="text-sm text-slate-500 ml-1 flex-shrink-0">万円</span>
+                        </div>
+                    </div>
+                    <div class="text-right text-xs text-slate-500 -mt-1 pr-36" id="sim0_own_max"></div>
+                </div>
+                <div class="p-4 bg-slate-100 rounded-lg">
+                    <p class="text-sm text-slate-500 text-center">住宅ローン借入額の目安</p>
+                    <p class="text-2xl font-bold text-red-600 text-center"><span id="sim0_loan_sub">0</span><span class="text-lg ml-1 font-medium">万円</span></p>
+                </div>
+            </div>
+        </div>
+        <!-- 結果グラフエリア -->
+        <div class="sticky top-8">
+            <div class="relative bg-slate-100 p-6 rounded-2xl shadow-md border border-slate-200">
+                <div class="absolute top-4 right-4 z-10">
+                    <div class="relative group">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-slate-400 cursor-help hover:text-slate-600"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                        <div class="absolute bottom-full right-0 mb-2 w-72 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <strong>グラフの見方</strong><br>
+                            このグラフは資金計画の天秤です。<br>
+                            左半円が「支出」、右半円が「収入」を表し、この2つが釣り合うことで計画が成り立ちます。<br><br>
+                            総予算額が大きくなるほど、グラフ全体も大きくなります。全体の大きさと、各項目のバランスを見ながら、無理のない計画を立てることが大切です。
+                        </div>
+                    </div>
+                </div>
+                <div id="external-total-text" class="text-center mb-2 hidden">
+                    <p class="text-sm text-slate-500">総予算</p>
+                    <p class="text-3xl font-bold text-slate-900"><span id="externalTotalAmountText">0</span><span class="text-lg font-medium ml-1">万円</span></p>
+                </div>
+                <div id="chart-wrapper" class="relative w-full mx-auto mb-4">
+                    <div class="aspect-square">
+                        <div class="flex w-full h-full">
+                            <div class="w-1/2 h-full"><canvas id="costChart"></canvas></div>
+                            <div class="w-1/2 h-full"><canvas id="fundingChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div id="chart-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <p class="text-sm text-slate-500">総予算</p>
+                        <p class="text-4xl font-bold text-slate-900"><span id="totalAmountText">0</span><span class="text-xl font-medium ml-1">万円</span></p>
+                    </div>
+                </div>
+                <div id="legend-container" class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm mb-6">
+                    <div id="cost-legend-wrapper"></div>
+                    <div id="funding-legend-wrapper"></div>
+                </div>
+            </div>
+        </div>
+      </div>
+      
+      <!-- カードA（解説コーナー） スマホ表示用 -->
+      <div class="order-3 md:hidden">
+         <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl shadow-sm">
+             <div class="flex items-center gap-3 mb-4">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                 <h3 class="text-xl font-bold text-emerald-800">解説コーナー</h3>
+             </div>
+             <div class="space-y-4">
+                <div>
+                    <h4 class="font-bold text-emerald-700 mb-2">ワンポイントアドバイス</h4>
+                    <p id="advice-text-sp" class="text-emerald-900 leading-relaxed text-sm"></p>
+                </div>
+                <hr class="border-emerald-200">
+                <div>
+                    <h4 class="font-bold text-emerald-700 mb-2">動画で学ぶ</h4>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" class="flex-1 bg-white hover:bg-emerald-100 text-emerald-700 font-bold py-2 px-4 rounded-lg border border-emerald-300 transition-colors flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.32 3.691A2 2 0 018.14 3h3.72a2 2 0 011.82 2.691l-1.24 7.437A2 2 0 0110.58 15H9.42a2 2 0 01-1.82-1.872L6.32 3.69z" /><path d="M10 17a1 1 0 100-2 1 1 0 000 2z" /></svg>
+                            <span>詳細動画 (5分)</span>
+                        </a>
+                        <a href="https://www.youtube.com/shorts/" target="_blank" rel="noopener noreferrer" class="flex-1 bg-white hover:bg-emerald-100 text-emerald-700 font-bold py-2 px-4 rounded-lg border border-emerald-300 transition-colors flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                            <span>ショート動画</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-20 bg-slate-900 py-8">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="text-base font-medium text-slate-200">
+            Plan wisely. Live comfortably.
+        </p>
+        <div class="mt-3 flex justify-center items-center gap-3">
+            <span class="text-sm text-slate-400">produce by</span>
+            <img src="https://www.dropbox.com/scl/fi/xmdwo37yp8lhhly2xx6ck/250712DOK_logo.png?rlkey=ex8rzpob79e5wdytv0hfjuy4f&st=o1story1&dl=1" alt="DOKロゴ" class="h-8">
+        </div>
+      </div>
+  </footer>
+
+
+  <script>
+    const chartColors = {
+        land: '#8b5cf6',
+        main: '#3b82f6',
+        option: '#0891b2',
+        ancillary: '#2dd4bf', 
+        other: '#64748b',
+        own: '#f59e0b',
+        loan: '#ef4444'
+    };
+  
+    const initialValues = {
+        land: 1000,
+        main: 2500,
+        option: 200,
+        ancillary: 200,
+        other: 300,
+        own: 500
+    };
+
+    const adviceMessages = [
+        "土地の形や方角も、家の建てやすさや価格に影響しますよ！",
+        "「角地」は人気ですが、その分価格が上がることも。メリット・デメリットを比較しましょう。",
+        "建物の断熱性や耐震性は、将来の安心と快適さに直結する重要なポイントです。",
+        "将来の家族構成の変化を考えて、間取りを決めると後悔が少ないですよ。",
+        "太陽光パネルは初期費用がかかりますが、長い目で見ると光熱費がお得になることも！",
+        "食洗機や浴室乾燥機など、日々の家事を楽にする設備は満足度が高い傾向にあります。",
+        "外構（お庭や駐車場）の費用は忘れがち。早めに計画に入れておきましょう。",
+        "地盤が弱い土地だと、地盤改良に追加の費用がかかる場合があります。",
+        "登記費用や各種税金など、現金で必要になる費用も忘れずに。",
+        "火災保険は必須です。補償内容をしっかり確認して選びましょう。",
+        "自己資金は、引越し費用や家具購入費など、表示されている費用以外にも必要になる分を残しておくと安心です。",
+        "自己資金が多いほど、毎月のローン返済額を抑えられます。"
+    ];
+
+    let lastAdviceIndex = -1;
+    const adviceTextPC = document.getElementById('advice-text-pc');
+    const adviceTextSP = document.getElementById('advice-text-sp');
+    let adviceChangeTimeout;
+
+    function showRandomAdvice() {
+        let randomIndex;
+        do {
+            randomIndex = Math.floor(Math.random() * adviceMessages.length);
+        } while (adviceMessages.length > 1 && randomIndex === lastAdviceIndex);
+        lastAdviceIndex = randomIndex;
+        
+        const newAdvice = adviceMessages[randomIndex];
+
+        // Fade out
+        adviceTextPC.style.opacity = 0;
+        adviceTextPC.style.transform = 'translateY(5px)';
+        adviceTextSP.style.opacity = 0;
+        adviceTextSP.style.transform = 'translateY(5px)';
+
+        // After a short delay, change text and fade in
+        setTimeout(() => {
+            adviceTextPC.textContent = newAdvice;
+            adviceTextSP.textContent = newAdvice;
+            adviceTextPC.style.opacity = 1;
+            adviceTextPC.style.transform = 'translateY(0)';
+            adviceTextSP.style.opacity = 1;
+            adviceTextSP.style.transform = 'translateY(0)';
+        }, 300); // 300ms delay for the fade out/in effect
+    }
+    
+    function debounceShowAdvice() {
+        clearTimeout(adviceChangeTimeout);
+        adviceChangeTimeout = setTimeout(showRandomAdvice, 800);
+    }
+
+    const inputs = Object.keys(initialValues);
+
+    inputs.forEach(id => {
+        const inputEl = document.getElementById(`sim0_${id}`);
+        const sliderEl = document.getElementById(`sim0_${id}_slider`);
+        if (inputEl && sliderEl) {
+            const eventHandler = () => {
+                updateSim0();
+                debounceShowAdvice();
+            };
+            inputEl.addEventListener('input', () => { 
+                sliderEl.value = inputEl.value; 
+                eventHandler();
+            });
+            sliderEl.addEventListener('input', () => { 
+                inputEl.value = sliderEl.value; 
+                eventHandler();
+            });
+        }
+    });
+    
+    document.getElementById('resetButton').addEventListener('click', () => {
+        inputs.forEach(id => {
+            const inputEl = document.getElementById(`sim0_${id}`);
+            const sliderEl = document.getElementById(`sim0_${id}_slider`);
+            if (inputEl && sliderEl) {
+                inputEl.value = initialValues[id];
+                sliderEl.value = initialValues[id];
+            }
+        });
+        updateSim0();
+        debounceShowAdvice();
+    });
+
+
+    function updateSim0() {
+        const values = {
+            land: +document.getElementById('sim0_land').value,
+            main: +document.getElementById('sim0_main').value,
+            option: +document.getElementById('sim0_option').value,
+            ancillary: +document.getElementById('sim0_ancillary').value,
+            other: +document.getElementById('sim0_other').value,
+            own: +document.getElementById('sim0_own').value
+        };
+
+        const totalCost = values.land + values.main + values.option + values.ancillary + values.other;
+        const loan = Math.max(0, totalCost - values.own);
+        const ownRatio = totalCost > 0 ? (values.own / totalCost * 100) : 0;
+        
+        document.getElementById('sim0_loan_sub').textContent = loan.toLocaleString();
+        document.getElementById('own_ratio_text').textContent = `自己資金比率: ${ownRatio.toFixed(1)}%`;
+        
+        updateDynamicLayout(totalCost);
+
+        const costChartData = {
+            labels: ['土地代', '建物本体価格', '建物オプション価格', '付帯工事費', 'その他諸経費'],
+            values: [values.land, values.main, values.option, values.ancillary, values.other],
+            colors: [chartColors.land, chartColors.main, chartColors.option, chartColors.ancillary, chartColors.other],
+        };
+        const fundingChartData = {
+            labels: ['自己資金', '住宅ローン'],
+            values: [values.own, loan],
+            colors: [chartColors.own, chartColors.loan],
+        };
+        
+        updateCharts(costChartData, fundingChartData);
+    }
+
+    function updateDynamicLayout(totalCost) {
+        const chartWrapper = document.getElementById('chart-wrapper');
+        const centerText = document.getElementById('chart-center-text');
+        const externalText = document.getElementById('external-total-text');
+        const totalAmountText = document.getElementById('totalAmountText');
+        const externalTotalAmountText = document.getElementById('externalTotalAmountText');
+
+        const minBudget = 1500;
+        const maxBudget = 10000;
+        const minSize = 200;
+        const maxSize = 320;
+
+        const clampedCost = Math.max(minBudget, Math.min(totalCost, maxBudget));
+        const budgetPercentage = (clampedCost - minBudget) / (maxBudget - minBudget);
+        const chartSize = minSize + (maxSize - minSize) * budgetPercentage;
+
+        chartWrapper.style.maxWidth = `${chartSize}px`;
+        
+        const sizeThreshold = 220; 
+        if (chartSize <= sizeThreshold) {
+            centerText.classList.add('hidden');
+            externalText.classList.remove('hidden');
+            externalTotalAmountText.textContent = totalCost.toLocaleString();
+        } else {
+            centerText.classList.remove('hidden');
+            externalText.classList.add('hidden');
+            totalAmountText.textContent = totalCost.toLocaleString();
+        }
+    }
+
+    let costChart, fundingChart;
+    function updateCharts(costData, fundingData) {
+        const tooltipOptions = {
+            enabled: true,
+            callbacks: {
+                label: (ctx) => {
+                    const label = ctx.label || '';
+                    const value = ctx.raw || 0;
+                    const total = ctx.chart.getDatasetMeta(0).total;
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    return `${label}: ${value.toLocaleString()} 万円 (${percentage}%)`;
+                }
+            }
+        };
+
+        const costOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            rotation: 180,
+            circumference: 180,
+            cutout: '65%',
+            plugins: {
+                legend: { display: false },
+                tooltip: tooltipOptions,
+            },
+            animation: { animateRotate: false }
+        };
+        
+        const fundingOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            rotation: 0,
+            circumference: 180,
+            cutout: '65%',
+            plugins: {
+                legend: { display: false },
+                tooltip: tooltipOptions,
+            },
+            animation: { animateRotate: false }
+        };
+
+        const reversedCostValues = [...costData.values].reverse();
+        const reversedCostLabels = [...costData.labels].reverse();
+        const reversedCostColors = [...costData.colors].reverse();
+
+        const costCtx = document.getElementById('costChart').getContext('2d');
+        if (costChart) {
+            costChart.data.datasets[0].data = reversedCostValues;
+            costChart.data.labels = reversedCostLabels;
+            costChart.data.datasets[0].backgroundColor = reversedCostColors;
+            costChart.update('none');
+        } else {
+            costChart = new Chart(costCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: reversedCostLabels,
+                    datasets: [{ data: reversedCostValues, backgroundColor: reversedCostColors, borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: costOptions
+            });
+        }
+
+        const fundingCtx = document.getElementById('fundingChart').getContext('2d');
+        if (fundingChart) {
+            fundingChart.data.datasets[0].data = fundingData.values;
+            fundingChart.data.labels = fundingData.labels;
+            fundingChart.data.datasets[0].backgroundColor = fundingData.colors;
+            fundingChart.update('none');
+        } else {
+            fundingChart = new Chart(fundingCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: fundingData.labels,
+                    datasets: [{ data: fundingData.values, backgroundColor: fundingData.colors, borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: fundingOptions
+            });
+        }
+        
+        generateCustomLegend(costData, fundingData);
+    }
+
+    function generateCustomLegend(costData, fundingData) {
+        const costWrapper = document.getElementById('cost-legend-wrapper');
+        const fundingWrapper = document.getElementById('funding-legend-wrapper');
+
+        costWrapper.innerHTML = '<h4 class="font-bold text-slate-800 mb-2">総予算の内訳</h4><div class="space-y-1"></div>';
+        fundingWrapper.innerHTML = '<h4 class="font-bold text-slate-800 mb-2">資金計画</h4><div class="space-y-1"></div>';
+
+        const costLegendContainer = costWrapper.querySelector('div');
+        const fundingLegendContainer = fundingWrapper.querySelector('div');
+
+        costData.labels.forEach((label, i) => {
+            if (costData.values[i] > 0) {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between';
+                legendItem.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-sm mr-2" style="background-color: ${costData.colors[i]};"></div>
+                        <span>${label}</span>
+                    </div>
+                    <span class="font-medium text-slate-600">${costData.values[i].toLocaleString()}万円</span>
+                `;
+                costLegendContainer.appendChild(legendItem);
+            }
+        });
+
+        fundingData.labels.forEach((label, i) => {
+             if (fundingData.values[i] > 0) {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between';
+                legendItem.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-sm mr-2" style="background-color: ${fundingData.colors[i]};"></div>
+                        <span>${label}</span>
+                    </div>
+                    <span class="font-medium text-slate-600">${fundingData.values[i].toLocaleString()}万円</span>
+                `;
+                fundingLegendContainer.appendChild(legendItem);
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        inputs.forEach(id => {
+            const sliderEl = document.getElementById(`sim0_${id}_slider`);
+            const maxEl = document.getElementById(`sim0_${id}_max`);
+            if (sliderEl && maxEl) {
+                const maxVal = parseInt(sliderEl.max).toLocaleString();
+                maxEl.textContent = `(上限: ${maxVal}万円)`;
+            }
+        });
+        document.getElementById('resetButton').click();
+    });
+  </script>
+</body>
+</html>
